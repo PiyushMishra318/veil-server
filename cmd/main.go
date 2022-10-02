@@ -2,31 +2,57 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+	"veil/pkg/common/db"
+	"veil/pkg/wallet"
 	"github.com/gin-gonic/gin"
-	"errors"
-	"veil/router/routes.go"
+	"github.com/joho/godotenv"
 )
 
+type Config struct {
+	Port  string `mapstructure:"PORT"`
+	DBUrl string `mapstructure:"DB_URL"`
+}
+
 func main() {
+	// load config
+	err := godotenv.Load("./pkg/common/envs/.env")
+
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	port:= os.Getenv("PORT")
+	dbUrl:= os.Getenv("DB_URL")
+
+
+	// init router
 	router := gin.Default()
+
+	// init db
+	h := db.Init(dbUrl)
+
+	// register wallet routes
+	wallet.RegisterRoutes(router, h)
+
 	router.GET("/", func(c *gin.Context) {
 		time.Sleep(5 * time.Second)
 		c.String(http.StatusOK, "Welcome Gin Server")
 	})
 
-	api := router.Group("/api")
-	{
-		routes.Register()
-	}
+	// api := router.Group("/api")
+	// {
+	// 	routes.Register(api)
+	// }
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    port,
 		Handler: router,
 	}
 
