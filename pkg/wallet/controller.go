@@ -10,10 +10,12 @@ type handler struct {
 }
 
 func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
-    h := &handler{
-        DB: db,
-    }
+	h := &handler{
+		DB: db,
+	}
 
-    routes := r.Group("/wallet")
-    routes.POST("/retreive", h.RetrieveWallet)
+	routes := r.Group("/api/wallet")
+	routes.POST("/retreive", h.RetrieveWallet)
+	routes.POST("/create", h.CreateWallet)
+	routes.PUT("/update-balance", h.UpdateBalance)
 }

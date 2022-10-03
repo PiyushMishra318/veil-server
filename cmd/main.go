@@ -9,8 +9,11 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"veil/pkg/category"
 	"veil/pkg/common/db"
+	"veil/pkg/transaction"
 	"veil/pkg/wallet"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -28,9 +31,8 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	port:= os.Getenv("PORT")
-	dbUrl:= os.Getenv("DB_URL")
-
+	port := os.Getenv("PORT")
+	dbUrl := os.Getenv("DB_URL")
 
 	// init router
 	router := gin.Default()
@@ -40,6 +42,8 @@ func main() {
 
 	// register wallet routes
 	wallet.RegisterRoutes(router, h)
+	transaction.RegisterRoutes(router, h)
+	category.RegisterRoutes(router,h)
 
 	router.GET("/", func(c *gin.Context) {
 		time.Sleep(5 * time.Second)
@@ -70,7 +74,7 @@ func main() {
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
-	
+
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down server...")
