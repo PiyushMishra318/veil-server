@@ -33,6 +33,15 @@ func (h handler) CreateTransaction(c *gin.Context) {
 	transaction.ID = uuid.New()
 	transaction.WalletID = body.WalletID
 	transaction.CategoryID = body.CategoryID
+
+
+	var category = &models.Category{}
+	if result := h.DB.Where(&models.Category{ID:body.CategoryID}).First(&category); result.Error != nil {
+		c.AbortWithError(http.StatusInternalServerError, result.Error)
+		return
+	}
+
+	transaction.Category = *category
 	transaction.Amount = body.Amount
 	transaction.Type = body.Type
 
@@ -47,11 +56,24 @@ func (h handler) CreateTransaction(c *gin.Context) {
 		transaction.VoiceFile = body.VoiceFile
 	}
 
-	if result := h.DB.Create(&transaction) ;result.Error != nil {
-		c.AbortWithError(http.StatusInternalServerError,result.Error)
+	if result := h.DB.Create(&transaction); result.Error != nil {
+		c.AbortWithError(http.StatusInternalServerError, result.Error)
 		return
 	}
 
-	c.JSON(http.StatusCreated, &transaction)
+	var wallet = &models.Wallet{}
+	h.DB.Where(&models.Wallet{ID: body.WalletID}).Find(&wallet)
 
+	if transaction.Type == "debited" {
+		wallet.Balance -= transaction.Amount
+	} else {
+		wallet.Balance += transaction.Amount
+	}
+
+	h.DB.Save(&wallet)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"transaction": &transaction,
+		"wallet":      &wallet,
+	})
 }

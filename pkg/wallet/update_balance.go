@@ -33,27 +33,52 @@ func (h handler) UpdateBalance(c *gin.Context) {
 		return
 	}
 
-	diff := wallet.Balance - new_balance
+	diff := new_balance - wallet.Balance
 
 	var transaction = &models.Transaction{}
 
-	transaction.Type = "credited"
-	transaction.WalletID = wallet.ID
-	transaction.Amount = math.Abs(diff)
-	transaction.CategoryID = uuid.New()
-	transaction.Recurring = false
+	if diff != 0 {
+		transaction.ID = uuid.New()
+		transaction.Type = "credited"
+		transaction.WalletID = wallet.ID
+		transaction.Amount = math.Abs(diff)
 
-	if diff < 0 {
-		transaction.Type = "debited"
+		var category = &models.Category{}
+
+		if result := h.DB.Where(&models.Category{Name: "Others"}).First(&category); result.Error != nil {
+			c.AbortWithError(http.StatusInternalServerError, result.Error)
+			return
+		}
+
+		transaction.CategoryID = category.ID
+		transaction.Category = *category
+		transaction.Recurring = false
+
+		if diff < 0 {
+			transaction.Type = "debited"
+		}
+
+		if result := h.DB.Create(&transaction); result.Error != nil {
+			c.AbortWithError(http.StatusInternalServerError, result.Error)
+			return
+		}
 	}
 
-	if result := h.DB.Create(&transaction); result.Error != nil {
-		c.AbortWithError(http.StatusInternalServerError, result.Error)
+	wallet.Balance = new_balance
+
+	h.DB.Save(&wallet)
+
+	if diff != 0 {
+		c.JSON(http.StatusCreated, gin.H{
+			"transaction": &transaction,
+			"wallet":      &wallet,
+		})
+
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"transaction": &transaction,
-		"wallet":      &wallet,
+		"wallet": &wallet,
 	})
+
 }
